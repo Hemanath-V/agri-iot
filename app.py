@@ -79,9 +79,18 @@ MAX_HISTORY = 100
 #   never loaded the model! This line was missing.
 crop_model = None
 CROP_MODEL_PATH = os.environ.get("CROP_MODEL_PATH", "crop_random_forest_model.pkl")
+
+def load_crop_model():
+    global crop_model
+    if crop_model is None:
+        import joblib
+        crop_model = joblib.load(CROP_MODEL_PATH)
+        logger.info("✅ Crop model loaded lazily")
+    return crop_model
+  
 try:
-    crop_model = joblib.load(CROP_MODEL_PATH)
-    logger.info("✅ Crop model loaded from %s", CROP_MODEL_PATH)
+    # crop_model = joblib.load(CROP_MODEL_PATH)
+    # logger.info("✅ Crop model loaded from %s", CROP_MODEL_PATH)
 except Exception as e:
     logger.warning("⚠ Could not load crop model: %s", e)
 
@@ -91,14 +100,16 @@ DISEASE_MODEL_PATH = os.environ.get("DISEASE_MODEL_PATH", "resnet18_disease_mode
 NUM_DISEASE_CLASSES = int(os.environ.get("NUM_DISEASE_CLASSES", "8"))
 
 try:
-    disease_model = models.resnet18(weights=None)
-    num_ftrs = disease_model.fc.in_features
-    disease_model.fc = nn.Linear(num_ftrs, NUM_DISEASE_CLASSES)
+    # disease_model = models.resnet18(weights=None)
+    # num_ftrs = disease_model.fc.in_features
+    # disease_model.fc = nn.Linear(num_ftrs, NUM_DISEASE_CLASSES)
 
-    state_dict = torch.load(DISEASE_MODEL_PATH, map_location="cpu")
-    disease_model.load_state_dict(state_dict)
-    disease_model.eval()
-    logger.info("✅ Disease model loaded from %s (%d classes)", DISEASE_MODEL_PATH, NUM_DISEASE_CLASSES)
+    # state_dict = torch.load(DISEASE_MODEL_PATH, map_location="cpu")
+    # disease_model.load_state_dict(state_dict)
+    # disease_model.eval()
+    # logger.info("✅ Disease model loaded from %s (%d classes)", DISEASE_MODEL_PATH, NUM_DISEASE_CLASSES)
+    disease_model = None
+    logger.info("⚠ Disease model disabled for deployment (memory optimization)")
 except Exception as e:
     logger.warning("⚠ Could not load disease model: %s", e)
 
@@ -286,7 +297,8 @@ def predict_crop():
         ]]
     except (KeyError, TypeError, ValueError) as e:
         return jsonify({"error": f"Invalid input: {e}"}), 400
-
+      
+    model = load_crop_model()
     prediction = crop_model.predict(features)[0]
 
     confidence = None
@@ -304,41 +316,48 @@ def predict_crop():
 # DISEASE PREDICTION (ResNet18 – 8 classes)
 # ──────────────────────────────────────────────────────────────
 
+
 @app.route("/predict_disease", methods=["POST"])
 def predict_disease():
-    """
-    Predict plant disease from an uploaded image.
-    Expects multipart/form-data with field "file" containing the image.
-    """
-    if disease_model is None:
-        return jsonify({"error": "Disease model not loaded"}), 503
-
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded. Send image as 'file' field."}), 400
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
-    try:
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
-    except Exception:
-        return jsonify({"error": "Invalid image file"}), 400
-
-    input_tensor = disease_transform(image).unsqueeze(0)
-
-    with torch.no_grad():
-        output = disease_model(input_tensor)
-        probabilities = torch.nn.functional.softmax(output, dim=1)[0]
-        confidence, disease_idx = torch.max(probabilities, 0)
-
-    idx = disease_idx.item()
-    disease_name = DISEASE_CLASSES[idx] if idx < len(DISEASE_CLASSES) else f"Class {idx}"
-
     return jsonify({
-        "predicted_disease": disease_name,
-        "confidence": round(confidence.item() * 100, 2),
-    })
+        "error": "Disease model temporarily disabled for cloud deployment"
+    }), 503
+
+# @app.route("/predict_disease", methods=["POST"])
+# def predict_disease():
+#     """
+#     Predict plant disease from an uploaded image.
+#     Expects multipart/form-data with field "file" containing the image.
+#     """
+#     if disease_model is None:
+#         return jsonify({"error": "Disease model not loaded"}), 503
+
+#     if "file" not in request.files:
+#         return jsonify({"error": "No file uploaded. Send image as 'file' field."}), 400
+
+#     file = request.files["file"]
+#     if file.filename == "":
+#         return jsonify({"error": "Empty filename"}), 400
+
+#     try:
+#         image = Image.open(io.BytesIO(file.read())).convert("RGB")
+#     except Exception:
+#         return jsonify({"error": "Invalid image file"}), 400
+
+#     input_tensor = disease_transform(image).unsqueeze(0)
+
+#     with torch.no_grad():
+#         output = disease_model(input_tensor)
+#         probabilities = torch.nn.functional.softmax(output, dim=1)[0]
+#         confidence, disease_idx = torch.max(probabilities, 0)
+
+#     idx = disease_idx.item()
+#     disease_name = DISEASE_CLASSES[idx] if idx < len(DISEASE_CLASSES) else f"Class {idx}"
+
+#     return jsonify({
+#         "predicted_disease": disease_name,
+#         "confidence": round(confidence.item() * 100, 2),
+#     })
 
 
 # ══════════════════════════════════════════════════════════════
