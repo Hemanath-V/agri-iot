@@ -134,11 +134,11 @@ else:
     logger.info("ℹ Using default disease class names (create class_names.json for accuracy)")
 
 # Image preprocessing (matches your friend's original transform)
-disease_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-])
+# disease_transform = transforms.Compose([
+#     transforms.Resize((224, 224)),
+#     transforms.ToTensor(),
+#     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+# ])
 
 
 # ══════════════════════════════════════════════════════════════
@@ -299,10 +299,10 @@ def predict_crop():
         return jsonify({"error": f"Invalid input: {e}"}), 400
       
     model = load_crop_model()
-    prediction = crop_model.predict(features)[0]
+    prediction = model.predict(features)[0]
 
     confidence = None
-    if hasattr(crop_model, "predict_proba"):
+    if hasattr(model, "predict_proba"):
         proba = crop_model.predict_proba(features)[0]
         confidence = round(float(np.max(proba)) * 100, 2)
 
