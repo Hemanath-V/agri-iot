@@ -88,11 +88,11 @@ def load_crop_model():
         logger.info("✅ Crop model loaded lazily")
     return crop_model
   
-try:
+# try:
     # crop_model = joblib.load(CROP_MODEL_PATH)
     # logger.info("✅ Crop model loaded from %s", CROP_MODEL_PATH)
-except Exception as e:
-    logger.warning("⚠ Could not load crop model: %s", e)
+# except Exception as e:
+    # logger.warning("⚠ Could not load crop model: %s", e)
 
 # --- Disease model (ResNet18 – 8 classes) ---------------------
 disease_model = None
