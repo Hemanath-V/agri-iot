@@ -36,13 +36,13 @@ import logging
 import numpy as np
 from datetime import datetime
 
-import torch
-import torch.nn as nn
+# import torch
+# import torch.nn as nn
 import joblib
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
-from torchvision import transforms, models
+# from torchvision import transforms, models
 
 # ── Logging ───────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
