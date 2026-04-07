@@ -81,13 +81,13 @@ MAX_HISTORY = 100
 crop_model = None
 CROP_MODEL_PATH = os.environ.get("CROP_MODEL_PATH", "crop_random_forest_model.pkl")
 
-# def load_crop_model():
-#     global crop_model
-#     if crop_model is None:
-#         import joblib
-#         crop_model = joblib.load(CROP_MODEL_PATH)
-#         logger.info("✅ Crop model loaded lazily")
-#     return crop_model
+def load_crop_model():
+    global crop_model
+    if crop_model is None:
+        import joblib
+        crop_model = joblib.load(CROP_MODEL_PATH)
+        logger.info("✅ Crop model loaded lazily")
+    return crop_model
 
 # @app.route("/warmup", methods=["GET"])
 # def warmup():
@@ -370,55 +370,55 @@ def get_sensor_history():
 # Feature order: [N, P, K, pH, temp, hum, moist]
 # ──────────────────────────────────────────────────────────────
 
-@app.route("/predict_crop", methods=["POST"])
-def predict_crop():
-    """
-    Predict the best crop based on sensor data.
+# @app.route("/predict_crop", methods=["POST"])
+# def predict_crop():
+#     """
+#     Predict the best crop based on sensor data.
 
-    Expects JSON:
-    { "N": 280, "P": 22, "K": 195, "pH": 6.5, "temp": 28, "hum": 78, "moist": 68 }
+#     Expects JSON:
+#     { "N": 280, "P": 22, "K": 195, "pH": 6.5, "temp": 28, "hum": 78, "moist": 68 }
 
-    OR send empty body {} → uses latest ESP32 sensor data automatically.
-    """
-    if crop_model is None:
-        return jsonify({"error": "Crop model not loaded"}), 503
+#     OR send empty body {} → uses latest ESP32 sensor data automatically.
+#     """
+#     if crop_model is None:
+#         return jsonify({"error": "Crop model not loaded"}), 503
 
-    data = request.get_json(force=True) if request.is_json else {}
+#     data = request.get_json(force=True) if request.is_json else {}
 
-    # Fallback to stored ESP32 data if no input provided
-    if not data or "temp" not in data:
-        if sensor_store["latest"]:
-            data = sensor_store["latest"]
-            logger.info("Using latest stored sensor data for crop prediction")
-        else:
-            return jsonify({"error": "No sensor data provided and no stored data available"}), 400
+#     # Fallback to stored ESP32 data if no input provided
+#     if not data or "temp" not in data:
+#         if sensor_store["latest"]:
+#             data = sensor_store["latest"]
+#             logger.info("Using latest stored sensor data for crop prediction")
+#         else:
+#             return jsonify({"error": "No sensor data provided and no stored data available"}), 400
 
-    try:
-        # Feature order MUST match training: [N, P, K, pH, temp, hum, moist]
-        features = [[
-            float(data["N"]),
-            float(data["P"]),
-            float(data["K"]),
-            float(data["pH"]),
-            float(data["temp"]),
-            float(data["hum"]),
-            float(data["moist"]),
-        ]]
-    except (KeyError, TypeError, ValueError) as e:
-        return jsonify({"error": f"Invalid input: {e}"}), 400
+#     try:
+#         # Feature order MUST match training: [N, P, K, pH, temp, hum, moist]
+#         features = [[
+#             float(data["N"]),
+#             float(data["P"]),
+#             float(data["K"]),
+#             float(data["pH"]),
+#             float(data["temp"]),
+#             float(data["hum"]),
+#             float(data["moist"]),
+#         ]]
+#     except (KeyError, TypeError, ValueError) as e:
+#         return jsonify({"error": f"Invalid input: {e}"}), 400
       
-    model = load_crop_model()
-    prediction = model.predict(features)[0]
+#     model = load_crop_model()
+#     prediction = model.predict(features)[0]
 
-    confidence = None
-    if hasattr(model, "predict_proba"):
-        proba = crop_model.predict_proba(features)[0]
-        confidence = round(float(np.max(proba)) * 100, 2)
+#     confidence = None
+#     if hasattr(model, "predict_proba"):
+#         proba = crop_model.predict_proba(features)[0]
+#         confidence = round(float(np.max(proba)) * 100, 2)
 
-    return jsonify({
-        "recommended_crop": str(prediction),
-        "confidence": confidence,
-    })
+#     return jsonify({
+#         "recommended_crop": str(prediction),
+#         "confidence": confidence,
+#     })
 
 
 # ──────────────────────────────────────────────────────────────
