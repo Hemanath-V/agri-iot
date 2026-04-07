@@ -89,9 +89,19 @@ def load_crop_model():
         logger.info("✅ Crop model loaded lazily")
     return crop_model
 
-@app.on_event("startup")
-def load_model():
-  load_crop_model()
+@app.route("/warmup", methods=["GET"])
+def warmup():
+    try:
+        load_crop_model()
+        return jsonify({
+            "status": "ready",
+            "crop_model_loaded": crop_model is not None
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
   
 # try:
     # crop_model = joblib.load(CROP_MODEL_PATH)
