@@ -77,6 +77,7 @@ MAX_HISTORY = 100
 # --- Crop model (Random Forest via joblib) --------------------
 # ⚠ BUG FIX: Your friend's code called crop_model.predict() but
 #   never loaded the model! This line was missing.
+  
 crop_model = None
 CROP_MODEL_PATH = os.environ.get("CROP_MODEL_PATH", "crop_random_forest_model.pkl")
 
@@ -87,6 +88,10 @@ def load_crop_model():
         crop_model = joblib.load(CROP_MODEL_PATH)
         logger.info("✅ Crop model loaded lazily")
     return crop_model
+
+@app.on_event("startup")
+def load_model():
+  load_crop_model()
   
 # try:
     # crop_model = joblib.load(CROP_MODEL_PATH)
