@@ -81,26 +81,120 @@ MAX_HISTORY = 100
 crop_model = None
 CROP_MODEL_PATH = os.environ.get("CROP_MODEL_PATH", "crop_random_forest_model.pkl")
 
-def load_crop_model():
-    global crop_model
-    if crop_model is None:
-        import joblib
-        crop_model = joblib.load(CROP_MODEL_PATH)
-        logger.info("✅ Crop model loaded lazily")
-    return crop_model
+# def load_crop_model():
+#     global crop_model
+#     if crop_model is None:
+#         import joblib
+#         crop_model = joblib.load(CROP_MODEL_PATH)
+#         logger.info("✅ Crop model loaded lazily")
+#     return crop_model
 
-@app.route("/warmup", methods=["GET"])
-def warmup():
+# @app.route("/warmup", methods=["GET"])
+# def warmup():
+#     try:
+#         load_crop_model()
+#         return jsonify({
+#             "status": "ready",
+#             "crop_model_loaded": crop_model is not None
+#         })
+#     except Exception as e:
+#         return jsonify({
+#             "status": "error",
+#             "message": str(e)
+#         }), 500
+@app.route("/predict_crop", methods=["POST"])
+def predict_crop():
     try:
-        load_crop_model()
+        # Step 1: Load model
+        try:
+            model = load_crop_model()
+        except Exception as e:
+            logger.error("❌ Failed to load crop model: %s", str(e))
+            return jsonify({
+                "error": "Failed to load crop model",
+                "detail": str(e),
+                "step": "model_loading"
+            }), 503
+
+        if model is None:
+            return jsonify({"error": "Crop model is None after loading"}), 503
+
+        # Step 2: Parse input data
+        try:
+            data = request.get_json(force=True) if request.is_json else {}
+        except Exception as e:
+            logger.error("❌ Failed to parse JSON: %s", str(e))
+            return jsonify({
+                "error": "Failed to parse request JSON",
+                "detail": str(e),
+                "step": "json_parsing"
+            }), 400
+
+        # Fallback to stored ESP32 data if no input provided
+        if not data or "temp" not in data:
+            if sensor_store["latest"]:
+                data = sensor_store["latest"]
+                logger.info("Using latest stored sensor data for crop prediction")
+            else:
+                return jsonify({"error": "No sensor data provided and no stored data available"}), 400
+
+        # Step 3: Build features array
+        try:
+            features = [[
+                float(data["N"]),
+                float(data["P"]),
+                float(data["K"]),
+                float(data["pH"]),
+                float(data["temp"]),
+                float(data["hum"]),
+                float(data["moist"]),
+            ]]
+            logger.info("📊 Features built: %s", features)
+        except (KeyError, TypeError, ValueError) as e:
+            logger.error("❌ Failed to build features: %s", str(e))
+            return jsonify({
+                "error": "Invalid input data",
+                "detail": str(e),
+                "step": "feature_building",
+                "received_data": str(data)
+            }), 400
+
+        # Step 4: Predict
+        try:
+            prediction = model.predict(features)[0]
+            logger.info("✅ Prediction: %s", prediction)
+        except Exception as e:
+            logger.error("❌ Prediction failed: %s", str(e))
+            return jsonify({
+                "error": "Model prediction failed",
+                "detail": str(e),
+                "step": "prediction",
+                "model_type": str(type(model)),
+                "features_shape": str(np.array(features).shape),
+                "features": str(features)
+            }), 500
+
+        # Step 5: Confidence
+        confidence = None
+        try:
+            if hasattr(model, "predict_proba"):
+                proba = model.predict_proba(features)[0]
+                confidence = round(float(np.max(proba)) * 100, 2)
+                logger.info("📈 Confidence: %s%%", confidence)
+        except Exception as e:
+            logger.warning("⚠ Could not compute confidence: %s", str(e))
+
         return jsonify({
-            "status": "ready",
-            "crop_model_loaded": crop_model is not None
+            "recommended_crop": str(prediction),
+            "confidence": confidence,
         })
+
     except Exception as e:
+        logger.error("❌ Unexpected error in predict_crop: %s", str(e))
         return jsonify({
-            "status": "error",
-            "message": str(e)
+            "error": "Unexpected server error",
+            "detail": str(e),
+            "step": "unknown"
         }), 500
   
 # try:
