@@ -146,7 +146,7 @@ def predict_crop():
                 float(data["K"]),
                 float(data["pH"]),
                 float(data["temp"]),
-                float(data["hum"]),
+                # float(data["hum"]),
                 float(data["moist"]),
             ]]
             logger.info("📊 Features built: %s", features)
