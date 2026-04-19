@@ -53,12 +53,12 @@ app = Flask(__name__)
 # ══════════════════════════════════════════════════════════════
 # CORS – Allow your frontend origins
 # ══════════════════════════════════════════════════════════════
-CORS(app, resources={r"/*": {"origins": [
-    "http://localhost:4200",                    # Angular dev server
-    "https://your-frontend.vercel.app",         # ← REPLACE with your Vercel URL
-    "https://*.vercel.app",                     # Wildcard for Vercel preview deploys
-]}})
-
+# CORS(app, resources={r"/*": {"origins": [
+#     "http://localhost:4200",                    
+#     "https://your-frontend.vercel.app",         
+#     "https://*.vercel.app",                     
+# ]}})
+CORS(app)
 # ══════════════════════════════════════════════════════════════
 # IN-MEMORY SENSOR STORE (for ESP32 data)
 # Replace with MongoDB/PostgreSQL in production
